@@ -1,4 +1,5 @@
 # Joseph Sommer and Yash Mhaskar
+
 from __future__ import print_function
 import cv2 as cv
 import argparse
@@ -65,7 +66,7 @@ class ObjectTrackingPubsub(Node):
 		DZ = 30
 
 		turn_dir = 0 # -1 is left, +1 is right
-		#cap = cv.VideoCapture(args.camera)
+
 		# Blue ball specific values
 		low_H = 85
 		low_S = 153
@@ -94,17 +95,14 @@ class ObjectTrackingPubsub(Node):
 			cv.circle(self._imgBGR,center,radius,(0,255,0),2)
 			cv.circle(frame_threshold,center,radius,(0,255,0),2)
 
-		#print center point of object
-		#print("Center: %2d, %2d" % (x_axis, y_axis))
+	
 		if (x_axis>(x_axis_max/2 -DZ) and x_axis<(x_axis_max/2 +DZ)) or (x_axis==0):
 			turn_dir = 0
 		elif x_axis<(x_axis_max/2):
 			turn_dir = 1
 		elif x_axis>(x_axis_max/2):
 			turn_dir = -1
-		#print("Direction: %2d" % (turn_dir))\
-		#self.publish_.publish(turn_dir)
-		#coord_publisher.update_direction(turn_dir)
+		
 		
 		# publish direction
 		msg = Int32()
