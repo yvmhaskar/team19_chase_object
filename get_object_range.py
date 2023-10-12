@@ -48,29 +48,64 @@ class ObjectRangePubsub(Node):
 		self.movement_publisher = self.create_publisher(Int32, 'movement_coord', 10)
 		#self.timer = self.create_timer(0.5, self.publish_command)
 	
-	global x
-	global radius
+	global x1
+	global r
+	global lidar_data
 	global got_dir
 	global got_lidar
 
 	def _dir_callback(self, msg):
-		x = float(msg.data1)
-		radius = float(msg.data2)
+		x1 = float(msg.data1)
+		r = float(msg.data2)
 		got_dir = 1
 		self.pub_coord()
 
 	def _lidar_callback(self,msg):
-		range = float(msg.ranges)
+		lidar_data = float(msg.ranges)
 		got_lidar = 1
 		self.pub_coord()
 
 	def pub_coord():
 		if got_dir == 1 and got_lidar == 1:
 			#logic
+			# Set direction. Positive is angled right, negative is angled left
+			direction = 1
+			if x1 > 328/2:
+				direction = -1
+
+			# Perpendicular distance in pixels to center and outer edges of object
+			x1_bar = 328/2 - x1 # units of pixel values. Describes perpendicular distance from x_axis of robot
+			x1_bar = x1_bar*direction
+
+			x2_bar = x1_bar - r # result is perp distance from center axis to edge of object. In pixels
+			x3_bar = x1_bar + r # result is perp distance from center axis to other edge of object. In pixels
+
+			# angular offset from x axis to center and outer edges of object
+			theta1 = x1_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
+			theta2 = x2_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
+			theta3 = x3_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
+
+			# this part will access lidar range data for specific angles
+			angular_resolution = 1.62 # degrees
+			angle_index1 = int(theta1 / angular_resolution) # index that refers to angle of center of object
+			angle_index2 = int(theta2 / angular_resolution) # index that refers to angle of edge of object
+			angle_index3 = int(theta3 / angular_resolution) # index that refers to angle of other edge of object
+
+			# Check all distances in that range and pick the closest (smallest one)
+			length = abs(angle_index3)-abs(angle_index2)+1
+			range_at_angle = [None] * length
+			for i in range(0, length, 1):
+				range_at_angle[i] = lidar_data[angle_index2+i]
+
+			# Find desired distance and angle to output
+			x_d = min(range_at_angle)
+			index = range_at_angle.index(x_d)
+			ang_err = direction*(angle_index2+index) * angular_resolution # angular error in degrees
+			
 			# publish direction
 			msg = Int32()
 			msg.data1 = int(x_d)
-			msg.data2 = rad
+			msg.data2 = ang_err
 			# Publish the x-axis position
 			self.movement_publisher.publish(msg)
 			got_dir = 0
