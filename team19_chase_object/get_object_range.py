@@ -78,7 +78,7 @@ class ObjectRangePubsub(Node):
 		lidar_data = msg.ranges
 		default_range = 20
 		for i in range(len(lidar_data)):
-			if math.isnan(lidar_data[i]):
+			if math.isnan(lidar_data[i]) or lidar_data[i]==0:
 				lidar_data[i] = default_range
 		got_lidar = 1
 		self.pub_coord()
