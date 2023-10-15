@@ -7,6 +7,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import LaserScan
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
@@ -54,7 +55,7 @@ class ObjectRangePubsub(Node):
 		self.get_direction # Prevents unused variable warning.
 
 		#Declare dir_publisher
-		self.movement_publisher = self.create_publisher(Int32MultiArray, 'movement_coord', 10)
+		self.movement_publisher = self.create_publisher(Float32MultiArray, 'movement_coord', 10)
 		#self.timer = self.create_timer(0.5, self.publish_command)
 
 
@@ -78,7 +79,7 @@ class ObjectRangePubsub(Node):
 		lidar_data = msg.ranges
 		default_range = 20
 		for i in range(len(lidar_data)):
-			if math.isnan(lidar_data[i]) or lidar_data[i]==0:
+			if math.isnan(lidar_data[i]) or (lidar_data[i]==0):
 				lidar_data[i] = default_range
 		got_lidar = 1
 		self.pub_coord()
@@ -88,7 +89,7 @@ class ObjectRangePubsub(Node):
 		global r
 		global got_dir
 		global got_lidar
-		if got_dir == 1 and got_lidar == 1:
+		if got_dir == 1 and got_lidar == 1 and r!=0:
 			#logic
 			# Set direction. Positive is angled right, negative is angled left
 			direction = 1
@@ -112,21 +113,30 @@ class ObjectRangePubsub(Node):
 			angle_index1 = int(theta1 / angular_resolution) # index that refers to angle of center of object
 			angle_index2 = int(theta2 / angular_resolution) # index that refers to angle of edge of object
 			angle_index3 = int(theta3 / angular_resolution) # index that refers to angle of other edge of object
+			self.get_logger().info('angle_index2: "%s"'% angle_index2)
+			self.get_logger().info('angle_index3: "%s"'% angle_index3)
+			self.get_logger().info('radius: "%s"'% r)
+			self.get_logger().info('length: "%s"'% len(lidar_data))
 
 			# Check all distances in that range and pick the closest (smallest one)
 			length = abs(angle_index3)-abs(angle_index2)+1
+			self.get_logger().info('length: "%s"'% length)
+
 			range_at_angle = [None] * length
 			for i in range(0, length, 1):
 				range_at_angle[i] = lidar_data[angle_index2+i]
+				self.get_logger().info('range_at_angle: "%s"'% range_at_angle)
+
 
 			# Find desired distance and angle to output
-			x_d = min(range_at_angle)
+			x_d = min(range_at_angle) # min distance to robot in m
 			index = range_at_angle.index(x_d)
 			ang_err = direction*(angle_index2+index) * angular_resolution # angular error in degrees
 			
 			# publish direction
-			msg = Int32MultiArray()
-			msg.data = [int(x_d),int(ang_err)]
+			msg = Float32MultiArray()
+			msg.data = [x_d,ang_err]
+			#msg.data = range_at_angle
 			# Publish the x-axis position
 			self.movement_publisher.publish(msg)
 			got_dir = 0
