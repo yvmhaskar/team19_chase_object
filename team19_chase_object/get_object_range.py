@@ -18,11 +18,14 @@ import math
 
 global x1
 global r
+r = 0
 global lidar_data
 global got_dir
 got_dir = 0
 global got_lidar
 got_lidar = 0
+global counter
+counter = 0
 
 class ObjectRangePubsub(Node):
 	def __init__(self):
@@ -89,58 +92,90 @@ class ObjectRangePubsub(Node):
 		global r
 		global got_dir
 		global got_lidar
-		if got_dir == 1 and got_lidar == 1 and r!=0:
-			#logic
-			# Set direction. Positive is angled right, negative is angled left
-			direction = 1
-			if x1 > 328/2:
-				direction = -1
+		global counter		
+					
+		if got_dir == 1 and got_lidar == 1: 
+			if r!=0 and len(lidar_data)>200:
+				#logic
+				# Set direction. Positive is angled right, negative is angled left
+				direction = 1
+				if x1 > 328/2:
+					direction = -1
 
-			# Perpendicular distance in pixels to center and outer edges of object
-			x1_bar = 328/2 - x1 # units of pixel values. Describes perpendicular distance from x_axis of robot
-			x1_bar = x1_bar*direction
+				# Perpendicular distance in pixels to center and outer edges of object
+				x1_bar = 328/2 - x1 # units of pixel values. Describes perpendicular distance from x_axis of robot
+				x1_bar = x1_bar*direction
 
-			x2_bar = x1_bar - r # result is perp distance from center axis to edge of object. In pixels
-			x3_bar = x1_bar + r # result is perp distance from center axis to other edge of object. In pixels
+				x2_bar = x1_bar - r # result is perp distance from center axis to edge of object. In pixels
+				x3_bar = x1_bar + r # result is perp distance from center axis to other edge of object. In pixels
 
-			# angular offset from x axis to center and outer edges of object
-			theta1 = x1_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
-			theta2 = x2_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
-			theta3 = x3_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
+				# angular offset from x axis to center and outer edges of object
+				theta1 = x1_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
+				theta2 = x2_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
+				theta3 = x3_bar * (62.2/2) / (328/2) # result is angular displacement from x_axis of robot in degrees
 
-			# this part will access lidar range data for specific angles
-			angular_resolution = 1.62 # degrees
-			angle_index1 = int(theta1 / angular_resolution) # index that refers to angle of center of object
-			angle_index2 = int(theta2 / angular_resolution) # index that refers to angle of edge of object
-			angle_index3 = int(theta3 / angular_resolution) # index that refers to angle of other edge of object
-			self.get_logger().info('angle_index2: "%s"'% angle_index2)
-			self.get_logger().info('angle_index3: "%s"'% angle_index3)
-			self.get_logger().info('radius: "%s"'% r)
-			self.get_logger().info('length: "%s"'% len(lidar_data))
+				# this part will access lidar range data for specific angles
+				angular_resolution = 1.62 # degrees
+				angle_index1 = int(theta1 / angular_resolution) # index that refers to angle of center of object
+				angle_index2 = int(theta2 / angular_resolution) # index that refers to angle of edge of object
+				angle_index3 = int(theta3 / angular_resolution) # index that refers to angle of other edge of object
+				
+				self.get_logger().info('radius: "%s"'% r)
+				self.get_logger().info('lidar length: "%s"'% len(lidar_data))
 
-			# Check all distances in that range and pick the closest (smallest one)
-			length = abs(angle_index3)-abs(angle_index2)+1
-			self.get_logger().info('length: "%s"'% length)
+				# Check all distances in that range and pick the closest (smallest one)
+				length = angle_index3-angle_index2+1
+				self.get_logger().info('rangelength: "%s"'% length)
 
-			range_at_angle = [None] * length
-			for i in range(0, length, 1):
-				range_at_angle[i] = lidar_data[angle_index2+i]
-				self.get_logger().info('range_at_angle: "%s"'% range_at_angle)
+				range_at_angle = [None] * length
+				for i in range(0, length, 1):
+					range_at_angle[i] = lidar_data[angle_index2+i]
 
 
-			# Find desired distance and angle to output
-			x_d = min(range_at_angle) # min distance to robot in m
-			index = range_at_angle.index(x_d)
-			ang_err = direction*(angle_index2+index) * angular_resolution # angular error in degrees
-			
+				# Find desired distance and angle to output
+				x_d = np.mean(range_at_angle)
+				#x_d_min = min(range_at_angle) # min distance to robot in m
+				#index = range_at_angle.index(x_d_min)
+				#ang_err = direction*(angle_index2+index) * angular_resolution # angular error in degrees
+				ang_err = theta1*direction
+				# publish direction
+				msg = Float32MultiArray()
+				msg.data = [x_d,ang_err]
+
+				# Publish the x-axis position
+				self.movement_publisher.publish(msg)
+				got_dir = 0
+				got_lidar = 0
+				counter = 0
+
+			else:
+#				x_d = 0.5 # min distance to robot in m
+#				ang_err = 0.0
+#				# publish direction
+#				self.get_logger().info('x_d: "%s"'% x_d)
+#				
+#				msg = Float32MultiArray()
+#				msg.data = [x_d,ang_err]
+#				
+#				# Publish the x-axis position
+##				got_dir = 0
+#				got_lidar = 0
+				counter = counter+1
+		else:
+			counter = counter+1
+		if counter > 50:
+			x_d = 0.5 # min distance to robot in m
+			ang_err = 0.0
 			# publish direction
+			self.get_logger().info('ang_err: "%s"'% ang_err)
+				
 			msg = Float32MultiArray()
 			msg.data = [x_d,ang_err]
-			#msg.data = range_at_angle
+			counter = 0
+				
 			# Publish the x-axis position
 			self.movement_publisher.publish(msg)
-			got_dir = 0
-			got_lidar = 0
+
 
 def main(args=None):
 	# Setting up publisher values

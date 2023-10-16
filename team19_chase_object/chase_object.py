@@ -18,21 +18,44 @@ class MovementSubPub(Node):
 		mover_data = msg.data
 		e_l = float(mover_data[0])
 		e_a = float(mover_data[1])
+		e_a = e_a*3.14159/180
+		e_a = numpy.arctan2(numpy.sin(e_a), numpy.cos(e_a))
 
-		pid_l = PID(1,0.1,0.05,setpoint=0.5)
-		pid_a = PID(1,0.1,0.05,setpoint=0)
+		setlin = 0.5
+		setang = 0.0
+		bufferlin = 0.1
+		bufferang = 0.2
+		#if (abs(e_l)-setlin>bufferlin):
+		#	pid_l = PID(-0.3,0.0,0.001,setpoint=setlin)
+		#	v_l = pid_l(e_l)
+		#else:
+		#	v_l = 0.0
+		#if (abs(e_a)-setang>bufferang):
+		#	pid_a = PID(-0.65,0.0,0.002,setpoint=setang)
+		#	v_a = pid_a(e_a)
+		#else:
+		#	v_a = 0.0
+		
 
+		pid_l = PID(-0.45,0.0001,0.008,setpoint=setlin)
 		v_l = pid_l(e_l)
+		pid_a = PID(0.5,0.001,0.003,setpoint=setang)
 		v_a = pid_a(e_a)
+			
+		#v_l = pid_l(e_l)
+		#v_a = pid_a(e_a)
 		if v_l > 0.22:
 			v_l = 0.22
-		if v_l < -0.22:
+		elif v_l < -0.22:
 			v_l = -0.22
 		if v_a > 2.84:
 			v_a = 2.84
-		if v_l < -2.84:
-			v_l = -2.84
+		elif v_a < -2.84:
+			v_a = -2.84
 		
+		
+		self.get_logger().info('e_l: "%s"'% e_l)
+		self.get_logger().info('e_a: "%s"'% e_a)
 		twist = Twist()
 		twist.linear.x = v_l
 		twist.angular.z = v_a
