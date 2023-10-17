@@ -53,12 +53,12 @@ class MovementSubPub(Node):
 		elif v_a < -2.84:
 			v_a = -2.84
 		
+		self.get_logger().info('v_l: "%s"'% v_l)
+		self.get_logger().info('v_a: "%s"'% v_a)
 		
-		self.get_logger().info('e_l: "%s"'% e_l)
-		self.get_logger().info('e_a: "%s"'% e_a)
 		twist = Twist()
 		twist.linear.x = v_l
-		twist.angular.z = v_a
+		#twist.angular.z = v_a
 		self.cmd_vel.publish(twist)
 
 def main(args=None):
