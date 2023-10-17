@@ -26,6 +26,8 @@ global got_lidar
 got_lidar = 0
 global counter
 counter = 0
+global ang_err_old
+ang_err_old=0
 
 class ObjectRangePubsub(Node):
 	def __init__(self):
@@ -80,7 +82,7 @@ class ObjectRangePubsub(Node):
 		global lidar_data
 		global got_lidar
 		lidar_data = msg.ranges
-		default_range = 20
+		default_range = 0.5
 		for i in range(len(lidar_data)):
 			if math.isnan(lidar_data[i]) or (lidar_data[i]==0):
 				lidar_data[i] = default_range
@@ -92,7 +94,8 @@ class ObjectRangePubsub(Node):
 		global r
 		global got_dir
 		global got_lidar
-		global counter		
+		global counter
+		global ang_err_old	
 					
 		if got_dir == 1 and got_lidar == 1: 
 			if r!=0 and len(lidar_data)>200:
@@ -138,10 +141,11 @@ class ObjectRangePubsub(Node):
 				#index = range_at_angle.index(x_d_min)
 				#ang_err = direction*(angle_index2+index) * angular_resolution # angular error in degrees
 				ang_err = theta1*direction
+				ang_err = (ang_err + ang_err_old)/2
 				# publish direction
 				msg = Float32MultiArray()
 				msg.data = [x_d,ang_err]
-
+				ang_err_old = ang_err
 				# Publish the x-axis position
 				self.movement_publisher.publish(msg)
 				got_dir = 0
@@ -171,6 +175,7 @@ class ObjectRangePubsub(Node):
 				
 			msg = Float32MultiArray()
 			msg.data = [x_d,ang_err]
+			
 			counter = 0
 				
 			# Publish the x-axis position

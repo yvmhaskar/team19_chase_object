@@ -10,6 +10,7 @@ from std_msgs.msg import Int32MultiArray
 from sensor_msgs.msg import CompressedImage
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
 import sys
+import time
 import numpy as np
 from cv_bridge import CvBridge
 
@@ -59,13 +60,11 @@ class ObjectTrackingPubsub(Node):
 		high_S_name = 'High S'
 		high_V_name = 'High V'
 		radius = 0
-		x_axis = 0
+		x_axis = 140
 		y_axis = 0
 		x_axis_max = 328
 		y_axis_max = 246
 		DZ = 30
-
-		turn_dir = 0 # -1 is left, +1 is right
 
 		# Blue ball specific values
 		low_H = 85
@@ -89,26 +88,19 @@ class ObjectTrackingPubsub(Node):
 			count = contours[0]
 			(x_axis,y_axis),radius = cv.minEnclosingCircle(count)
 			center = (int(x_axis),int(y_axis))
-			radius = int(radius)
+			radius = int(radius/2)
 		# reduces likelihood of showing contour on wrong object
 		if radius>40:
+				
 			cv.circle(self._imgBGR,center,radius,(0,255,0),2)
 			cv.circle(frame_threshold,center,radius,(0,255,0),2)
-
-	
-		if (x_axis>(x_axis_max/2 -DZ) and x_axis<(x_axis_max/2 +DZ)) or (x_axis==0):
-			turn_dir = 0
-		elif x_axis<(x_axis_max/2):
-			turn_dir = 1
-		elif x_axis>(x_axis_max/2):
-			turn_dir = -1
-		
 		
 		# publish direction
 		msg = Int32MultiArray()
 		msg.data = [int(x_axis),radius]
 		# Publish the x-axis position
 		self.dir_publisher_.publish(msg)
+		time.sleep(0.1)
 
 def main(args=None):
 	# Setting up publisher values

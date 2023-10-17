@@ -37,28 +37,45 @@ class MovementSubPub(Node):
 		#	v_a = 0.0
 		
 
-		pid_l = PID(-0.45,0.0001,0.008,setpoint=setlin)
+		pid_l = PID(-0.45,0.000,0.05,setpoint=setlin)
 		v_l = pid_l(e_l)
-		pid_a = PID(0.5,0.001,0.003,setpoint=setang)
+		pid_a = PID(-0.6,0.0,0.05,setpoint=setang)
 		v_a = pid_a(e_a)
-			
+		#v_l = -0.45*e_l
+		#v_a = 0.2*e_a	
 		#v_l = pid_l(e_l)
 		#v_a = pid_a(e_a)
 		if v_l > 0.22:
 			v_l = 0.22
 		elif v_l < -0.22:
 			v_l = -0.22
-		if v_a > 2.84:
-			v_a = 2.84
-		elif v_a < -2.84:
-			v_a = -2.84
-		
-		self.get_logger().info('v_l: "%s"'% v_l)
-		self.get_logger().info('v_a: "%s"'% v_a)
+		if v_a > 1.42:
+			v_a = 1.42
+		elif v_a < -1.42:
+			v_a = -1.42
 		
 		twist = Twist()
-		twist.linear.x = v_l
-		#twist.angular.z = v_a
+		if abs(e_a) > 0.2:
+			self.get_logger().info('e_a: "%s"'% e_a)
+			self.get_logger().info('v_a: "%s"'% v_a)
+			twist.angular.z = v_a
+			twist.linear.x = 0.0
+			case = 1
+			
+		if abs(e_a) < 0.2:
+			self.get_logger().info('e_l: "%s"'% e_l)
+			self.get_logger().info('v_l: "%s"'% v_l)
+			twist.angular.z = 0.0
+			twist.linear.x = v_l
+			case = 2
+
+		if abs(e_l)<0.55 and abs(e_l)>0.45:
+			self.get_logger().info('e_l: "%s"'% e_l)
+			self.get_logger().info('v_l: "%s"'% v_l)
+			twist.angular.z = 0.0
+			twist.linear.x = 0.0
+			
+		
 		self.cmd_vel.publish(twist)
 
 def main(args=None):
